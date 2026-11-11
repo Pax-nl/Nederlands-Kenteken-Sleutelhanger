@@ -49,8 +49,8 @@ hoek_radius = 2.0; // [1.0:0.5:4.0]
 // Binnendiameter van het sleutelring-gat in mm
 gat_diameter = 4.0; // [3.0:0.5:5.0]
 
-// Breedte van de witte beschermring rondom het sleutelgat in mm
-witte_ring_dikte = 0.8; // [0.5:0.1:1.5]
+// Breedte van de witte ring rondom het sleutelgat in mm (0 = geen ring, blauw loopt massief door tot aan het gat)
+witte_ring_dikte = 0.0; // [0.0:0.1:1.5]
 
 // Breedte van het blauwe EU-vlak in mm
 eu_breedte = 9.2; // [7.0:0.2:15.0]
@@ -200,27 +200,29 @@ module YellowPart() {
             }
 }
 
-// 3. Blauw: Europees vlak aan de linkerzijde
+// 3. Blauw: Europees vlak aan de linkerzijde (loopt bij witte_ring_dikte=0 massief door tot aan het gat)
 module BluePart() {
     color(kleur_blauw)
     translate([0, 0, totale_dikte - inleg_diepte])
         linear_extrude(height=inleg_diepte)
             difference() {
                 eu_field_2d();
-                // Uitsparing voor het sleutelgat en de witte beschermring
+                // Uitsparing voor het gat (plus ring indien ingesteld)
                 translate([gat_x, gat_y])
-                    circle(d=gat_diameter + 2 * witte_ring_dikte);
+                    circle(d=gat_diameter + (witte_ring_dikte > 0 ? 2 * witte_ring_dikte : 0));
                 // Uitsparing voor de witte NL landcode
                 eu_country_text_2d();
             }
 }
 
-// 4. Wit: Ring rondom het sleutelgat + NL landcode
+// 4. Wit: Optionele ring rondom het sleutelgat + NL landcode
 module WhiteParts() {
     color(kleur_wit)
     translate([0, 0, totale_dikte - inleg_diepte])
         linear_extrude(height=inleg_diepte) {
-            white_ring_2d();
+            if (witte_ring_dikte > 0) {
+                white_ring_2d();
+            }
             eu_country_text_2d();
         }
 }

@@ -55,10 +55,10 @@ centered_vertices = [(x - 35.5, y - 7.5, z - 1.5) for (x, y, z) in vertices]
 
 triangles = []
 paint_map = {
-    '1': '4',   # Filament 1: Zwart (basis, buitenrand, tekst)
-    '2': '0C',  # Filament 2: Geel (kentekenvlak)
-    '3': '8',   # Filament 3: Blauw (Europees vlak)
-    '4': '1C'   # Filament 4: Wit (sleutelring, landcode)
+    '1': '4',   # Filament 1 (4 >> 2 = 1): Zwart (basis, buitenrand, tekst)
+    '2': '8',   # Filament 2 (8 >> 2 = 2): Geel (kentekenvlak)
+    '3': '0C',  # Filament 3 (12 >> 2 = 3): Blauw (Europees vlak)
+    '4': '10'   # Filament 4 (16 >> 2 = 4): Wit (landcode en optionele ring)
 }
 
 for t in mesh.findall('m:triangles/m:triangle', ns):
