@@ -200,7 +200,6 @@ with zipfile.ZipFile(OUTPUT_3MF, "w", zipfile.ZIP_DEFLATED) as z:
     z.writestr("3D/_rels/3dmodel.model.rels", rels_model)
     z.writestr("3D/Objects/object_1.model", new_obj_1_str)
     z.writestr("Metadata/model_settings.config", model_settings)
-    z.writestr("Metadata/project_settings.config", project_settings)
 
 if os.path.exists(TEMP_3MF):
     os.remove(TEMP_3MF)
