@@ -47,7 +47,7 @@ rand_breedte = 0.9; // [0.6:0.1:2.0]
 hoek_radius = 2.0; // [1.0:0.5:4.0]
 
 // Binnendiameter van het sleutelring-gat in mm
-gat_diameter = 3.5; // [2.5:0.5:5.0]
+gat_diameter = 4.0; // [3.0:0.5:5.0]
 
 // Breedte van de witte beschermring rondom het sleutelgat in mm
 witte_ring_dikte = 0.8; // [0.5:0.1:1.5]
