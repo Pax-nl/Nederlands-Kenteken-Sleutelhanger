@@ -13,7 +13,7 @@
 
 /* [Kenteken Instellingen] */
 // Het gewenste kenteken (bijv. 12-AB-34, 1-ABC-23, AA-12-BB)
-kenteken_tekst = "AA-12-BB";
+kenteken_tekst = "G-363-GZ";
 
 // Lettertype voor kenteken ("Kenteken" is het officiële Nederlandse kentekenfont)
 lettertype = "Kenteken"; // font
@@ -23,6 +23,12 @@ landcode = "NL";
 
 // Lettergrootte van de landcode (NL) in mm
 landcode_grootte = 3.2; // [1.8:0.2:4.5]
+
+// Hoogte/grootte van de kentekentekst in mm
+tekst_grootte = 7.8; // [6.0:0.2:10.0]
+
+// Extra lijndikte / bold-effect voor de kentekentekst in mm
+tekst_extra_dikte = 0.20; // [0.0:0.05:0.5]
 
 /* [Afmetingen] */
 // Totale lengte van de nummerplaat in mm
@@ -123,23 +129,34 @@ module eu_country_text_2d() {
     }
 }
 
-// 2D zwarte letters en cijfers van het kenteken (horizontaal en verticaal gecentreerd)
+// 2D zwarte letters en cijfers van het kenteken (gecentreerd en met instelbare grootte & lijndikte)
 module plate_text_2d() {
     let(
         yellow_min_x = eu_breedte,
         yellow_max_x = plaat_lengte - rand_breedte,
         center_x = (yellow_min_x + yellow_max_x) / 2,
-        center_y = plaat_hoogte / 2,
-        font_size = plaat_hoogte * 0.48
+        center_y = plaat_hoogte / 2
     ) {
-        translate([center_x, center_y])
-            text(
-                text=kenteken_tekst, 
-                size=font_size, 
-                font=lettertype, 
-                halign="center", 
-                valign="center"
-            );
+        translate([center_x, center_y]) {
+            if (tekst_extra_dikte > 0) {
+                offset(delta=tekst_extra_dikte)
+                    text(
+                        text=kenteken_tekst, 
+                        size=tekst_grootte, 
+                        font=lettertype, 
+                        halign="center", 
+                        valign="center"
+                    );
+            } else {
+                text(
+                    text=kenteken_tekst, 
+                    size=tekst_grootte, 
+                    font=lettertype, 
+                    halign="center", 
+                    valign="center"
+                );
+            }
+        }
     }
 }
 
