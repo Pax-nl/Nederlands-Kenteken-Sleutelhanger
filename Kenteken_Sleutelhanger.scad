@@ -59,8 +59,11 @@ witte_ring_dikte = 0.0; // [0.0:0.1:1.5]
 // Breedte van het blauwe EU-vlak in mm
 eu_breedte = 9.2; // [7.0:0.2:15.0]
 
-// Diepte van de kleur-inleg in mm (vanaf de toplaag naar beneden)
-inleg_diepte = 0.6; // [0.4:0.2:1.2]
+// Diepte van het gele en blauwe basisvlak in mm (vanaf onderkant opdruk naar beneden)
+vlak_dikte = 0.6; // [0.4:0.2:1.2]
+
+// Dikte van de bovenop liggende letters, witte NL en buitenrand in mm
+opdruk_dikte = 0.6; // [0.4:0.2:1.0]
 
 /* [Kleuren (Bambu Lab AMS / Multi-Color)] */
 // Kleur van de zwarte houder, buitenrand en letters (Zwart)
@@ -165,65 +168,69 @@ module plate_text_2d() {
 }
 
 // =============================================================================
-// 3D Modules (Per Kleur)
+// 3D Modules (Gelaagd / Economisch Multi-Color)
 // =============================================================================
+// Laagopbouw:
+// Z = 0.0 tot Z = z_bodem : Zwarte massieve basis/drager
+// Z = z_bodem tot Z = z_vlak : Blauw en Geel vlak (zonder filamentwissels met wit/zwart!)
+// Z = z_vlak tot Z = totale_dikte : Zwarte rand + zwarte letters + witte NL bovenop
 
-// 1. Zwart: Massieve achterkant/drager + buitenrand alléén om de hele plaat + letters
+z_bodem = totale_dikte - vlak_dikte - opdruk_dikte;
+z_vlak = totale_dikte - opdruk_dikte;
+
+// 1. Zwart: Massieve achterkant/drager + verhoogde buitenrand + verhoogde letters
 module BlackParts() {
     color(kleur_zwart) {
         // Onderste massieve laag (bodem van de sleutelhanger)
-        linear_extrude(height=totale_dikte - inleg_diepte)
+        linear_extrude(height=z_bodem)
             difference() {
                 plate_contour_2d();
                 translate([gat_x, gat_y]) circle(d=gat_diameter);
             }
             
-        // Bovenste laag: Zwarte buitenrand om de héle plaat + zwarte kentekentekst
-        translate([0, 0, totale_dikte - inleg_diepte])
-            linear_extrude(height=inleg_diepte) {
-                // Alleen de zwarte buitenrand om de gehele plaat
+        // Bovenste laag (op z = z_vlak): Zwarte buitenrand + zwarte kentekentekst bovenop het geel
+        translate([0, 0, z_vlak])
+            linear_extrude(height=opdruk_dikte) {
+                // Zwarte buitenrand om de gehele plaat
                 difference() {
                     plate_contour_2d();
                     inner_plate_2d();
                 }
-                // Kentekentekst ingelegd
+                // Kentekentekst verhoogd / bovenop het gele vlak
                 plate_text_2d();
             }
     }
 }
 
-// 2. Geel: Nummerplaat achtergrond
+// 2. Geel: Massief nummerplaat vlak (volledig onder de letters doorlopend, geen uitsnijdingen!)
 module YellowPart() {
     color(kleur_geel)
-    translate([0, 0, totale_dikte - inleg_diepte])
-        linear_extrude(height=inleg_diepte)
+    translate([0, 0, z_bodem])
+        linear_extrude(height=vlak_dikte)
             difference() {
                 inner_plate_2d();
                 eu_field_2d();
-                plate_text_2d();
             }
 }
 
-// 3. Blauw: Europees vlak aan de linkerzijde (loopt bij witte_ring_dikte=0 massief door tot aan het gat)
+// 3. Blauw: Massief Europees vlak aan de linkerzijde (volledig onder de witte tekst doorlopend!)
 module BluePart() {
     color(kleur_blauw)
-    translate([0, 0, totale_dikte - inleg_diepte])
-        linear_extrude(height=inleg_diepte)
+    translate([0, 0, z_bodem])
+        linear_extrude(height=vlak_dikte)
             difference() {
                 eu_field_2d();
                 // Uitsparing voor het gat (plus ring indien ingesteld)
                 translate([gat_x, gat_y])
                     circle(d=gat_diameter + (witte_ring_dikte > 0 ? 2 * witte_ring_dikte : 0));
-                // Uitsparing voor de witte NL landcode
-                eu_country_text_2d();
             }
 }
 
-// 4. Wit: Optionele ring rondom het sleutelgat + NL landcode
+// 4. Wit: Bovenop liggende witte NL landcode (+ optionele ring rondom sleutelgat)
 module WhiteParts() {
     color(kleur_wit)
-    translate([0, 0, totale_dikte - inleg_diepte])
-        linear_extrude(height=inleg_diepte) {
+    translate([0, 0, z_vlak])
+        linear_extrude(height=opdruk_dikte) {
             if (witte_ring_dikte > 0) {
                 white_ring_2d();
             }
