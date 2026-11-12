@@ -11,6 +11,10 @@
 // - Zwart ingelegde kentekentekst in het gele vlak (met authentiek Nederlands kentekenfont).
 // - Volledig vlakke toplaag (flush / erin) – perfect voor Textured PEI prints!
 
+/* [Model Type / Stijl] */
+// Kies tussen verzonken (vlak / inlay - beste hechting en toplaag) of reliëf (gelaagd - minder filamentwissels)
+stijl = "inlay"; // [inlay:Vlakke Inlay (Flush - 100% slijtvast en strak), relief:Reliëf (Gelaagd - Letters liggen bovenop)]
+
 /* [Onderdeel Selectie] */
 // Welk onderdeel weergeven/exporteren ("all" voor het complete model)
 part = "all"; // [all:Alles (Preview), black:Alleen Zwart (Basis en letters), yellow:Alleen Geel (Nummerplaat), blue:Alleen Blauw (EU vlak), white:Alleen Wit (NL code)]
@@ -62,10 +66,10 @@ witte_ring_dikte = 0.0; // [0.0:0.1:1.5]
 // Breedte van het blauwe EU-vlak in mm
 eu_breedte = 9.2; // [7.0:0.2:15.0]
 
-// Diepte van het gele en blauwe basisvlak in mm (vanaf onderkant opdruk naar beneden)
+// Diepte van het gele en blauwe basisvlak in mm (bij reliëf stijl)
 vlak_dikte = 0.6; // [0.4:0.2:1.2]
 
-// Dikte van de bovenop liggende letters, witte NL en buitenrand in mm
+// Dikte van de bovenop liggende letters, witte NL en buitenrand in mm (bij reliëf stijl) of inlegdiepte (bij inlay stijl)
 opdruk_dikte = 0.6; // [0.4:0.2:1.0]
 
 /* [Kleuren (Bambu Lab AMS / Multi-Color)] */
@@ -183,74 +187,136 @@ module plate_text_2d() {
 }
 
 // =============================================================================
-// 3D Modules (Gelaagd / Economisch Multi-Color)
+// 3D Modules (Ondersteunt zowel "inlay" als "relief")
 // =============================================================================
-// Laagopbouw:
-// Z = 0.0 tot Z = z_bodem : Zwarte massieve basis/drager
-// Z = z_bodem tot Z = z_vlak : Blauw en Geel vlak (zonder filamentwissels met wit/zwart!)
-// Z = z_vlak tot Z = totale_dikte : Zwarte rand + zwarte letters + witte NL bovenop
 
-z_bodem = totale_dikte - vlak_dikte - opdruk_dikte;
-z_vlak = totale_dikte - opdruk_dikte;
+// Laagberekening voor "relief"
+z_relief_bodem = totale_dikte - vlak_dikte - opdruk_dikte;
+z_relief_vlak  = totale_dikte - opdruk_dikte;
 
-// 1. Zwart: Massieve achterkant/drager + verhoogde buitenrand + verhoogde letters
+// Laagberekening voor "inlay"
+z_inlay_bodem = totale_dikte - opdruk_dikte;
+
+// 1. Zwart
 module BlackParts() {
     color(kleur_zwart) {
-        // Onderste massieve laag (bodem van de sleutelhanger)
-        linear_extrude(height=z_bodem)
-            difference() {
-                plate_contour_2d();
-                translate([gat_x, gat_y]) circle(d=gat_diameter);
-            }
-            
-        // Bovenste laag (op z = z_vlak): Zwarte buitenrand + zwarte kentekentekst bovenop het geel
-        translate([0, 0, z_vlak])
-            linear_extrude(height=opdruk_dikte) {
-                // Zwarte buitenrand om de gehele plaat
+        if (stijl == "inlay") {
+            // Vlakke inlay: Volledige massieve bodem tot z_inlay_bodem
+            linear_extrude(height=z_inlay_bodem)
                 difference() {
                     plate_contour_2d();
-                    inner_plate_2d();
+                    translate([gat_x, gat_y]) circle(d=gat_diameter);
                 }
-                // Kentekentekst verhoogd / bovenop het gele vlak
-                plate_text_2d();
-            }
+            // Zwarte buitenrand + verzonken kentekentekst op z_inlay_bodem tot totale_dikte
+            translate([0, 0, z_inlay_bodem])
+                linear_extrude(height=opdruk_dikte) {
+                    difference() {
+                        plate_contour_2d();
+                        inner_plate_2d();
+                    }
+                    plate_text_2d();
+                }
+        } else {
+            // Reliëf stijl:
+            // 1. Massieve achterkant/drager (Z: 0 tot z_relief_bodem)
+            linear_extrude(height=z_relief_bodem)
+                difference() {
+                    plate_contour_2d();
+                    translate([gat_x, gat_y]) circle(d=gat_diameter);
+                }
+            // 2. Doorlopende zwarte buitenrand in de tussenzone (Z: z_relief_bodem tot z_relief_vlak)
+            translate([0, 0, z_relief_bodem])
+                linear_extrude(height=vlak_dikte)
+                    difference() {
+                        plate_contour_2d();
+                        inner_plate_2d();
+                    }
+            // 3. Bovenste laag (Z: z_relief_vlak tot totale_dikte): Buitenrand + reliëf letters
+            translate([0, 0, z_relief_vlak])
+                linear_extrude(height=opdruk_dikte) {
+                    difference() {
+                        plate_contour_2d();
+                        inner_plate_2d();
+                    }
+                    plate_text_2d();
+                }
+        }
     }
 }
 
-// 2. Geel: Massief nummerplaat vlak (volledig onder de letters doorlopend, geen uitsnijdingen!)
+// 2. Geel
 module YellowPart() {
-    color(kleur_geel)
-    translate([0, 0, z_bodem])
-        linear_extrude(height=vlak_dikte)
-            difference() {
-                inner_plate_2d();
-                eu_field_2d();
-            }
-}
-
-// 3. Blauw: Massief Europees vlak aan de linkerzijde (volledig onder de witte tekst doorlopend!)
-module BluePart() {
-    color(kleur_blauw)
-    translate([0, 0, z_bodem])
-        linear_extrude(height=vlak_dikte)
-            difference() {
-                eu_field_2d();
-                // Uitsparing voor het gat (plus ring indien ingesteld)
-                translate([gat_x, gat_y])
-                    circle(d=gat_diameter + (witte_ring_dikte > 0 ? 2 * witte_ring_dikte : 0));
-            }
-}
-
-// 4. Wit: Bovenop liggende witte NL landcode (+ optionele ring rondom sleutelgat)
-module WhiteParts() {
-    color(kleur_wit)
-    translate([0, 0, z_vlak])
-        linear_extrude(height=opdruk_dikte) {
-            if (witte_ring_dikte > 0) {
-                white_ring_2d();
-            }
-            eu_country_text_2d();
+    color(kleur_geel) {
+        if (stijl == "inlay") {
+            // Vlakke inlay: Geel vlak met uitsparingen voor zwarte letters
+            translate([0, 0, z_inlay_bodem])
+                linear_extrude(height=opdruk_dikte)
+                    difference() {
+                        inner_plate_2d();
+                        eu_field_2d();
+                        plate_text_2d();
+                    }
+        } else {
+            // Reliëf stijl: Massief geel vlak onder de letters door (Z: z_relief_bodem tot z_relief_vlak)
+            translate([0, 0, z_relief_bodem])
+                linear_extrude(height=vlak_dikte)
+                    difference() {
+                        inner_plate_2d();
+                        eu_field_2d();
+                    }
         }
+    }
+}
+
+// 3. Blauw
+module BluePart() {
+    color(kleur_blauw) {
+        if (stijl == "inlay") {
+            // Vlakke inlay: Blauw vlak met uitsparingen voor gat en witte NL tekst
+            translate([0, 0, z_inlay_bodem])
+                linear_extrude(height=opdruk_dikte)
+                    difference() {
+                        eu_field_2d();
+                        translate([gat_x, gat_y])
+                            circle(d=gat_diameter + (witte_ring_dikte > 0 ? 2 * witte_ring_dikte : 0));
+                        eu_country_text_2d();
+                    }
+        } else {
+            // Reliëf stijl: Massief blauw vlak onder de witte tekst door (Z: z_relief_bodem tot z_relief_vlak)
+            translate([0, 0, z_relief_bodem])
+                linear_extrude(height=vlak_dikte)
+                    difference() {
+                        eu_field_2d();
+                        translate([gat_x, gat_y])
+                            circle(d=gat_diameter + (witte_ring_dikte > 0 ? 2 * witte_ring_dikte : 0));
+                    }
+        }
+    }
+}
+
+// 4. Wit
+module WhiteParts() {
+    color(kleur_wit) {
+        if (stijl == "inlay") {
+            // Vlakke inlay: Witte NL landcode op gelijke hoogte (Z: z_inlay_bodem tot totale_dikte)
+            translate([0, 0, z_inlay_bodem])
+                linear_extrude(height=opdruk_dikte) {
+                    if (witte_ring_dikte > 0) {
+                        white_ring_2d();
+                    }
+                    eu_country_text_2d();
+                }
+        } else {
+            // Reliëf stijl: Witte NL landcode bovenop het blauwe vlak (Z: z_relief_vlak tot totale_dikte)
+            translate([0, 0, z_relief_vlak])
+                linear_extrude(height=opdruk_dikte) {
+                    if (witte_ring_dikte > 0) {
+                        white_ring_2d();
+                    }
+                    eu_country_text_2d();
+                }
+        }
+    }
 }
 
 // =============================================================================

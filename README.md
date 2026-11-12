@@ -11,7 +11,10 @@ Een volledig parametrische, multi-color 3D-printbare Nederlandse kenteken sleute
 
 - **MakerWorld Customizer Ready**: Gebruikers kunnen direct via hun browser op MakerWorld hun eigen kenteken invoeren, afmetingen instellen en een kant-en-klaar printbestand downloaden.
 - **Echte Nederlandse Typografie**: Inclusief het officiële `Kenteken` (GAIK) font met uniforme, strakke letter- en cijfervormen, evenals de klassieke `Kenteken Smits 1951` en `2013` varianten.
-- **Universele Multi-Color 3MF**: Maakt gebruik van de officiële 3MF material standaarden (geen vreemde printerprofielen of G-code foutmeldingen).
+- **Twee Stijlen Beschikbaar (Inlay of Reliëf)**:
+  - **Vlakke Inlay (Flush - Aanbevolen voor maximale duurzaamheid)**: Alle kleuren liggen exact gelijk in het oppervlak. Letters en rand kunnen er nooit afslijten of afbreken, perfect voor printen met de voorzijde op een Textured PEI plaat!
+  - **Gelaagd Reliëf (Laag wissels)**: Letters en buitenrand liggen 0.6 mm bovenop een doorlopend geel en blauw vlak. Ideaal als je het aantal filamentwissels wilt minimaliseren.
+- **Universele Multi-Color 3MF**: Maakt gebruik van de Bambu Studio projectstandaarden (geen vreemde printerprofielen of G-code foutmeldingen).
   - **Zwart** (`#111111`): Massieve achterkant, buitenrand om de plaat en de letters.
   - **Geel** (`#FFCC00`): Nederlands kentekenvlak.
   - **Blauw** (`#003399`): Europees vlak links, met afgeronde hoeken die meelopen met de buitenrand.
@@ -37,7 +40,9 @@ Nederlands-Kenteken-Sleutelhanger/
 │   ├── preview_persp.png
 │   └── preview_top.png
 ├── models/                            # Kant-en-klare 3D modellen
-│   └── Kenteken_Sleutelhanger.3mf     # Schoon multi-color 3MF model
+│   ├── Kenteken_Sleutelhanger.3mf     # Standaard (Vlakke Inlay)
+│   ├── Kenteken_Sleutelhanger_Inlay.3mf  # Vlakke Inlay (slijtvast)
+│   └── Kenteken_Sleutelhanger_Relief.3mf # Reliëf versie (minimale wissels)
 └── scripts/                           # Generatiescripts
     └── generate_3mf.py                # Python script om 3MF te bouwen via OpenSCAD
 ```

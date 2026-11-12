@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """
-Genereert een native Bambu Studio multi-part / multi-color .3mf project
+Genereert native Bambu Studio multi-part / multi-color .3mf projecten
 voor de Nederlandse Kenteken Sleutelhanger conform de MSX Cartridge pipeline.
+
+Genereert 2 versies in models/:
+1. Kenteken_Sleutelhanger_Inlay.3mf (Vlakke Inlay - 100% vlak, maximale hechting/slijtvastheid)
+2. Kenteken_Sleutelhanger_Relief.3mf (Gelaagd Reliëf - letters liggen bovenop, minimale wissels)
+En kopieert Inlay naar Kenteken_Sleutelhanger.3mf als standaard.
 """
 
 import os
@@ -19,7 +24,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
 TEMPLATE_PATH = REPO_ROOT / "templates" / "bambu_template.3mf"
 SCAD_FILE = REPO_ROOT / "Kenteken_Sleutelhanger.scad"
-OUTPUT_3MF = REPO_ROOT / "models" / "Kenteken_Sleutelhanger.3mf"
+MODELS_DIR = REPO_ROOT / "models"
 
 PARTS_CONFIG = [
     {
@@ -116,24 +121,15 @@ def triangles_to_mesh(
         indices.append(tri_idx)
     return vertices, indices
 
-def main():
-    openscad = find_openscad()
-    if not SCAD_FILE.is_file():
-        print(f"Fout: Kan {SCAD_FILE} niet vinden!")
-        sys.exit(1)
-    if not TEMPLATE_PATH.is_file():
-        print(f"Fout: Kan template {TEMPLATE_PATH} niet vinden!")
-        sys.exit(1)
-
-    print(f"1. OpenSCAD: {openscad}")
-    print("2. Exporteren van individuele kleuronderdelen via OpenSCAD...")
-
+def build_3mf(openscad: str, stijl: str, output_path: Path):
+    print(f"\n--- Bouwen 3MF: Stijl '{stijl}' -> {output_path.name} ---")
     parts_data = []
     try:
         for idx, cfg in enumerate(PARTS_CONFIG, start=1):
-            stl_path = SCRIPT_DIR / f"_temp_{cfg['arg']}.stl"
+            stl_path = SCRIPT_DIR / f"_temp_{stijl}_{cfg['arg']}.stl"
             cmd = [
                 openscad,
+                "-D", f'stijl="{stijl}"',
                 "-D", f'part="{cfg["arg"]}"',
                 "-o", str(stl_path),
                 str(SCAD_FILE),
@@ -166,11 +162,10 @@ def main():
             print(f"   - {cfg['name']}: {len(verts)} vertices, {len(indices)} driehoeken (Extruder {cfg['extruder']})")
     finally:
         for cfg in PARTS_CONFIG:
-            p = SCRIPT_DIR / f"_temp_{cfg['arg']}.stl"
+            p = SCRIPT_DIR / f"_temp_{stijl}_{cfg['arg']}.stl"
             if p.exists():
                 p.unlink()
 
-    print("3. Genereren van Bambu Studio projectstructuur conform MSX pipeline...")
     ref = parts_data[0]
     ref_cx, ref_cy, ref_cz = ref["cx"], ref["cy"], ref["cz"]
 
@@ -225,7 +220,7 @@ def main():
     # 2. Build 3D/3dmodel.model
     container_id = 5
     now_date = time.strftime("%Y-%m-%d")
-    project_title = "Kenteken Sleutelhanger"
+    project_title = f"Kenteken Sleutelhanger ({stijl.capitalize()})"
 
     model_3d_lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -338,10 +333,9 @@ def main():
     settings_lines.append('</config>')
     model_settings = '\n'.join(settings_lines)
 
-    # 4. Pack into template
-    OUTPUT_3MF.parent.mkdir(parents=True, exist_ok=True)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(TEMPLATE_PATH, "r") as src:
-        with zipfile.ZipFile(OUTPUT_3MF, "w", compression=zipfile.ZIP_DEFLATED) as dst:
+        with zipfile.ZipFile(output_path, "w", compression=zipfile.ZIP_DEFLATED) as dst:
             for item in src.infolist():
                 if item.filename in (
                     "3D/3dmodel.model",
@@ -380,7 +374,31 @@ def main():
             dst.writestr("3D/Objects/object_1.model", object_1_model.encode("utf-8"))
             dst.writestr("Metadata/model_settings.config", model_settings.encode("utf-8"))
 
-    print(f"\nKlaar! Native Bambu Studio 3MF succesvol gegenereerd conform MSX Cartridge pipeline:\n-> {OUTPUT_3MF}")
+    print(f"Klaar: {output_path}")
+
+def main():
+    openscad = find_openscad()
+    if not SCAD_FILE.is_file():
+        print(f"Fout: Kan {SCAD_FILE} niet vinden!")
+        sys.exit(1)
+    if not TEMPLATE_PATH.is_file():
+        print(f"Fout: Kan template {TEMPLATE_PATH} niet vinden!")
+        sys.exit(1)
+
+    print(f"OpenSCAD: {openscad}")
+
+    # 1. Genereer Vlakke Inlay (Flush)
+    inlay_3mf = MODELS_DIR / "Kenteken_Sleutelhanger_Inlay.3mf"
+    build_3mf(openscad, "inlay", inlay_3mf)
+
+    # 2. Genereer Gelaagd Reliëf (Relief)
+    relief_3mf = MODELS_DIR / "Kenteken_Sleutelhanger_Relief.3mf"
+    build_3mf(openscad, "relief", relief_3mf)
+
+    # 3. Kopieer Inlay als standaard Kenteken_Sleutelhanger.3mf
+    default_3mf = MODELS_DIR / "Kenteken_Sleutelhanger.3mf"
+    shutil.copyfile(inlay_3mf, default_3mf)
+    print(f"\nStandaard model bijgewerkt: {default_3mf}")
 
 if __name__ == "__main__":
     main()
