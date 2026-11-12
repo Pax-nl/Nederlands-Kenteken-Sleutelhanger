@@ -26,7 +26,10 @@ lettertype = "Kenteken"; // font
 landcode = "NL";
 
 // Lettergrootte van de landcode (NL) in mm
-landcode_grootte = 3.2; // [1.8:0.2:4.5]
+landcode_grootte = 3.8; // [2.0:0.2:5.0]
+
+// Extra lijndikte / bold-effect voor de landcode (NL) in mm
+landcode_extra_dikte = 0.12; // [0.0:0.02:0.3]
 
 // Hoogte/grootte van de kentekentekst in mm
 tekst_grootte = 7.8; // [6.0:0.2:10.0]
@@ -120,19 +123,31 @@ module white_ring_2d() {
     }
 }
 
-// 2D witte landcode tekst (NL) onder het sleutelgat (instelbare grootte via Customizer)
+// 2D witte landcode tekst (NL) onder het sleutelgat (instelbare grootte & dikte via Customizer)
 module eu_country_text_2d() {
     let(
-        y_pos = rand_breedte + 0.6
+        y_pos = rand_breedte + 1.2
     ) {
-        translate([gat_x, y_pos])
-            text(
-                landcode, 
-                size=landcode_grootte, 
-                font=lettertype, 
-                halign="center", 
-                valign="baseline"
-            );
+        translate([gat_x, y_pos]) {
+            if (landcode_extra_dikte > 0) {
+                offset(delta=landcode_extra_dikte)
+                    text(
+                        landcode, 
+                        size=landcode_grootte, 
+                        font=lettertype, 
+                        halign="center", 
+                        valign="baseline"
+                    );
+            } else {
+                text(
+                    landcode, 
+                    size=landcode_grootte, 
+                    font=lettertype, 
+                    halign="center", 
+                    valign="baseline"
+                );
+            }
+        }
     }
 }
 
