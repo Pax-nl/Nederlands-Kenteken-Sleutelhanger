@@ -11,6 +11,10 @@
 // - Zwart ingelegde kentekentekst in het gele vlak (met authentiek Nederlands kentekenfont).
 // - Volledig vlakke toplaag (flush / erin) – perfect voor Textured PEI prints!
 
+/* [Onderdeel Selectie] */
+// Welk onderdeel weergeven/exporteren ("all" voor het complete model)
+part = "all"; // [all:Alles (Preview), black:Alleen Zwart (Basis en letters), yellow:Alleen Geel (Nummerplaat), blue:Alleen Blauw (EU vlak), white:Alleen Wit (NL code)]
+
 /* [Kenteken Instellingen] */
 // Het gewenste kenteken (bijv. 12-AB-34, 1-ABC-23, AA-12-BB)
 kenteken_tekst = "G-363-GZ";
@@ -228,9 +232,19 @@ module WhiteParts() {
 }
 
 // =============================================================================
-// Volledige Samenstelling (Alles sluit naadloos aan op z = totale_dikte)
+// Samenstelling op basis van part parameter
 // =============================================================================
-BlackParts();
-YellowPart();
-BluePart();
-WhiteParts();
+if (part == "all") {
+    BlackParts();
+    YellowPart();
+    BluePart();
+    WhiteParts();
+} else if (part == "black") {
+    BlackParts();
+} else if (part == "yellow") {
+    YellowPart();
+} else if (part == "blue") {
+    BluePart();
+} else if (part == "white") {
+    WhiteParts();
+}

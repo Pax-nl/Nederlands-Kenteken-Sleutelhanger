@@ -1,17 +1,7 @@
 #!/usr/bin/env python3
 """
 Genereert een native Bambu Studio multi-part / multi-color .3mf project
-voor de Nederlandse Kenteken Sleutelhanger.
-
-Gebaseerd op de beproefde MSX Cartridge pipeline (/Volumes/Data/msx/Cartridge/export_multicolor_tui.py):
-1. Exporteert de 4 kleur-onderdelen als afzonderlijke STLs via OpenSCAD.
-2. Parsed en verwerkt de vertices en triangles (lokaal gecentreerd met centroid offsets).
-3. Gebruikt een schone bambu_template.3mf als basis (bevat alle Bambu Studio slicer/printer/plate configuraties).
-4. Schrijft:
-   - 3D/Objects/object_1.model (colorgroup, pindex, facet paint_color)
-   - 3D/3dmodel.model (container object met components en transforms)
-   - Metadata/model_settings.config (parts met offsets, extruders en matrices)
-   - Metadata/project_settings.config (filament kleuren, types en prime tower)
+voor de Nederlandse Kenteken Sleutelhanger conform de MSX Cartridge pipeline.
 """
 
 import os
@@ -109,7 +99,7 @@ def parse_stl(path: Path) -> list[tuple[tuple[float, float, float], ...]]:
 def triangles_to_mesh(
     triangles: list[tuple[tuple[float, float, float], ...]],
 ) -> tuple[list[tuple[float, float, float]], list[list[int]]]:
-    """Dedupliceer vertices en maak geïndexeerde triangle faces."""
+    """Dedupliceer vertices en maak geïndexeerde triangle faces met behoud van vertex-volgorde."""
     vertices: list[tuple[float, float, float]] = []
     v_map: dict[tuple[float, float, float], int] = {}
     indices: list[list[int]] = []
@@ -128,7 +118,7 @@ def triangles_to_mesh(
 
 def main():
     openscad = find_openscad()
-    if not os.path.isfile(SCAD_FILE):
+    if not SCAD_FILE.is_file():
         print(f"Fout: Kan {SCAD_FILE} niet vinden!")
         sys.exit(1)
     if not TEMPLATE_PATH.is_file():
@@ -136,18 +126,7 @@ def main():
         sys.exit(1)
 
     print(f"1. OpenSCAD: {openscad}")
-    print("2. Exporteren van STL onderdelen via OpenSCAD...")
-
-    wrapper_scad = SCRIPT_DIR / "_temp_wrap.scad"
-    with open(wrapper_scad, "w") as f:
-        f.write(f'''$fn = 60;
-include <{SCAD_FILE}>
-part = "all";
-if (part == "black") BlackParts();
-else if (part == "yellow") YellowPart();
-else if (part == "blue") BluePart();
-else if (part == "white") WhiteParts();
-''')
+    print("2. Exporteren van individuele kleuronderdelen via OpenSCAD...")
 
     parts_data = []
     try:
@@ -157,7 +136,7 @@ else if (part == "white") WhiteParts();
                 openscad,
                 "-D", f'part="{cfg["arg"]}"',
                 "-o", str(stl_path),
-                str(wrapper_scad),
+                str(SCAD_FILE),
             ]
             subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -186,19 +165,16 @@ else if (part == "white") WhiteParts();
             })
             print(f"   - {cfg['name']}: {len(verts)} vertices, {len(indices)} driehoeken (Extruder {cfg['extruder']})")
     finally:
-        if wrapper_scad.exists():
-            wrapper_scad.unlink()
         for cfg in PARTS_CONFIG:
             p = SCRIPT_DIR / f"_temp_{cfg['arg']}.stl"
             if p.exists():
                 p.unlink()
 
-    print("3. Genereren van native Bambu Studio projectstructuur...")
-    # Referentie-oorsprong is het eerste onderdeel (Basis_Zwart)
+    print("3. Genereren van Bambu Studio projectstructuur conform MSX pipeline...")
     ref = parts_data[0]
     ref_cx, ref_cy, ref_cz = ref["cx"], ref["cy"], ref["cz"]
 
-    # --- 3D/Objects/object_1.model ---
+    # 1. Build 3D/Objects/object_1.model (Local coordinates centered on each part)
     colorgroup_id = 100
     obj_lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -246,8 +222,8 @@ else if (part == "white") WhiteParts();
     obj_lines.append('</model>')
     object_1_model = '\n'.join(obj_lines)
 
-    # --- 3D/3dmodel.model ---
-    container_id = 1
+    # 2. Build 3D/3dmodel.model
+    container_id = 5
     now_date = time.strftime("%Y-%m-%d")
     project_title = "Kenteken Sleutelhanger"
 
@@ -303,7 +279,7 @@ else if (part == "white") WhiteParts();
     model_3d_lines.append('</model>')
     model_3d = '\n'.join(model_3d_lines)
 
-    # --- Metadata/model_settings.config ---
+    # 3. Build Metadata/model_settings.config
     settings_lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<config>',
@@ -362,7 +338,7 @@ else if (part == "white") WhiteParts();
     settings_lines.append('</config>')
     model_settings = '\n'.join(settings_lines)
 
-    # 4. Samenvoegen met template in OUTPUT_3MF
+    # 4. Pack into template
     OUTPUT_3MF.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(TEMPLATE_PATH, "r") as src:
         with zipfile.ZipFile(OUTPUT_3MF, "w", compression=zipfile.ZIP_DEFLATED) as dst:
@@ -375,17 +351,14 @@ else if (part == "white") WhiteParts();
                     continue
                 data = src.read(item.filename)
 
-                # Project settings updaten met juiste filamentkleuren en namen
                 if item.filename == "Metadata/project_settings.config":
                     try:
                         cfg = json.loads(data.decode("utf-8"))
-                        # Filament 1: Zwart, 2: Geel, 3: Blauw, 4: Wit
                         cfg["filament_colour"] = ["#111111", "#FFCC00", "#003399", "#FFFFFF"]
                         cfg["filament_multi_colour"] = ["#111111", "#FFCC00", "#003399", "#FFFFFF"]
                         cfg["filament_type"] = ["PLA", "PLA", "PLA", "PLA"]
                         cfg["filament_map"] = ["1", "2", "3", "4"]
                         cfg["default_filament_colour"] = ["#111111", "#FFCC00", "#003399", "#FFFFFF"]
-                        # Prime tower uit de buurt van 128,128 plaatsen (bijv 210, 210)
                         cfg["wipe_tower_x"] = ["210.0"]
                         cfg["wipe_tower_y"] = ["210.0"]
                         data = json.dumps(cfg, indent=4).encode("utf-8")
@@ -403,7 +376,6 @@ else if (part == "white") WhiteParts();
 
                 dst.writestr(item, data)
 
-            # Voeg gegenereerde modellen toe
             dst.writestr("3D/3dmodel.model", model_3d.encode("utf-8"))
             dst.writestr("3D/Objects/object_1.model", object_1_model.encode("utf-8"))
             dst.writestr("Metadata/model_settings.config", model_settings.encode("utf-8"))
